@@ -210,6 +210,10 @@ local cull_size = 10
 --How many new genomes are added.
 local new_genomes = 1
 
+-- how strongly each specimens mutates
+local mutation_strength = 0.05
+
+
 ----------------
 ---END PARAMETERS
 ----------------
@@ -391,6 +395,7 @@ local function create_specimen(input_layer)
 	specimen['layer2'] = create_layer(specimen['layer1'], 16) 
 	specimen['layer3'] = create_layer(specimen['layer2'], 8)
 	specimen['layer4'] = create_layer(specimen['layer2'], 4)
+	specimen['fitness'] = 0.0
 	return specimen
 end
 
@@ -405,8 +410,17 @@ end
 local function breed(parent1, parent2, target)
 	for j=1, #layer_names do
 		for i=1, #(target[layer_names[j]]) do
-			--randomly chooses a parent for this weight
+			--randomly chooses a parent for this weight.
 			target[layer_names[j]][i] = (math.random(2) == 1) ? parent1[layer_names[j]][i] : parent2[layer_names[j]][i]
+		end	
+	end
+end
+
+local function mutate(spec)
+	for j=1, #layer_names do
+		for i=1, #(spec[layer_names[j]]) do
+			--averages out the mutation and current weight.
+			spec[layer_names[j]][i] = (math.random() * mutation_strength) + (spec[layer_names[j]][i] * (1 - mutation_strength)) 
 		end	
 	end
 end
@@ -420,6 +434,22 @@ local function create_population(input_layer)
 	end
 	return population
 end
+
+local function adapt(pop)
+	
+	for i= #pop - cull_size, #pop - new_genomes do
+		breed(pop[math.random(cull_size)], pop[math.min( 1, math.random(cull_size) - 1)], pop[i])
+	end
+
+	for i= 1+ elite_population_size, #pop - cull_size -1 do
+		mutate(pop[i])
+	end
+
+	for #pop - new_genomes, #pop do
+		randomize_specimen(pop[i])
+	end
+end
+
 ---------------
 ---END GENETICS
 ---------------
