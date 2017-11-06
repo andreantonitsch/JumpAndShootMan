@@ -200,10 +200,10 @@ local bullets_addr_start = 0x1428
 
 local function create_input_table()
 	local input_table = {}
-	console.log("Input size: " .. input_size)
-	for i = 0, input_size do
+	--console.log("Input size: " .. input_size)
+	for i = 0, input_size-1 do
 		input_table[i] = {}
-		for j = 0, input_size do
+		for j = 0, input_size-1 do
 			input_table[i][j] = 0
 		end
 	end
@@ -244,7 +244,7 @@ local function map_objects(table, camx, camy, base_addr, weight)
 			local obj_y = mainmemory.read_u16_le(base_addr + 0x8) +1 - camy
 			local cellx = math.floor(obj_x / x_cell_size)
 			local celly = math.floor(obj_y / y_cell_size)
-			if cellx < 9 and cellx >= 0  and celly < 9 and celly >=0  then
+			if cellx < 8 and cellx >= 0  and celly < 8 and celly >=0  then
 				--console.log("obj x y: " .. math.floor(obj_x / x_cell_size).. " " .. math.floor(obj_y / y_cell_size))
 				table[ cellx ][celly ] = weight 
 			end
@@ -280,29 +280,91 @@ local function draw_input_table(table)
 	local y_start = 10
 	local fill = 0x40FFFFFF
 	local outl = 0xFFFFFFFF
+	
+	--console.log(#table)
 
 	for i = 0, #table do
 		for j = 0, #table do
 			local table_value = table[i][j]
 			if table_value then
 				if table_value == 1.0 then
-					fill = fill_color3
-					outl = outl_color3
-				elseif table_value == 0.5 then
-					fill = fill_color2
-					outl = outl_color2
-				elseif table_value == 0.25 then
 					fill = fill_color4
 					outl = outl_color4
-				else
+				elseif table_value == 0.5 then
 					fill = fill_color1
 					outl = outl_color1
+				elseif table_value == 0.25 then
+					fill = fill_color3
+					outl = outl_color3
+				else
+					fill = fill_color2
+					outl = outl_color2
 				end
-				gui.drawBox(x_start + 4 * i, y_start +  4* j, x_start + 4* i + 4, y_start + 4* j + 4 , fill, fill)
+				gui.drawBox(x_start + 8 * i, y_start +  8* j, x_start + 8* i + 8, y_start + 8* j + 8 , fill, fill)
 			end
 		end
 	end
 end
+
+
+
+-- --- NN section
+local function sigmoid(x)
+	return 1 / (1 + (math.exp(2.79, -x)))
+end
+
+local function activate_neuron(layer, neuron)
+	local sum = 0.0
+	for i=1, #layer do
+		sum = sum + weights[i] * layer[i]['value']()
+	end
+	neuron['value'] = (function() return sigmoid(sum) end)
+end
+
+local function create_neuron(previous_layer)
+	local neuron = {}
+	for i=1, #previous_layer do
+		neuron[i] = 0.0
+	end
+	neuron['activate'] = (function(prev_layer) return activate_neuron(prev_layer, neuron) end)
+	return neuron
+end
+
+local function activate_layer(previous_layer, layer)
+	for i=1, #layer do
+		layer[i]['activate'](previous_layer)
+	end
+end
+
+local function create_layer( previous_layer, size)
+	local layer = {}
+	for i=1, size do
+		layer[i] = create_neuron(previous_layer)
+	end
+	layer['activate'] = (function() return activate_layer(previous_layer, layer) end)
+	return layer
+end
+
+local function input_to_layer(input_table)
+	local layer = {	}
+	for i=1, input_size do
+		layer[i]['value'] = (function() return input_table[math.floor(i / input_size)][i % input_size] end)
+	end
+	return layer
+end
+
+
+-- Genetic Section
+-- local function create_specimen()
+
+-- 	local specimen = {}
+-- 	local 
+
+-- end
+
+
+
+---
 
 local table = create_input_table()
 
@@ -319,8 +381,6 @@ while true do
 
 	map_input_table(table)
 	draw_input_table(table)
-
-
 
 	emu.frameadvance()
 end
