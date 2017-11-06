@@ -152,8 +152,9 @@
 
 -- -- End Author Pasky13's examples
 
-
--- Parameters
+--------------
+----PARAMETERS
+--------------
 memory.usememorydomain("CARTROM")
 
 local input_size = 8 -- defines an 8x8 input matrix
@@ -163,26 +164,25 @@ local x_cell_size = math.ceil( 256 / input_size  )
 local y_cell_size = math.ceil( 224  / input_size  )
 
 --2byes
+--ADDRESS FOR MEGAMAN'S POSITION
 local mega_x_addr = 0xBAD
 local mega_y_addr = 0xBB0
 
 --2bytes
+--ADRESS FOR CAMERA'S POSITION
 local cam_x_addr = 0x00B4
 local cam_y_addr = 0x00B6
 
-
-
- local fill_color1 = 0x40FF0000
- local outl_color1 = 0xFFFF0000
-
- local fill_color2 = 0x40FFFFFF
- local outl_color2 = 0xFFFFFFFF
-
+--COLORS
+local fill_color1 = 0x40FF0000
+local outl_color1 = 0xFFFF0000
+local fill_color2 = 0x40FFFFFF
+local outl_color2 = 0xFFFFFFFF
 local fill_color3 = 0x40FFFF00
 local outl_color3 = 0xFFFFFF00
-
 local fill_color4 = 0x4000FF00
 
+--OBJECT SIZE
 local obj_step = 0x40
 -- each enemy occupies 64bytes
 -- IMPORTANT offsets:
@@ -197,6 +197,30 @@ local enemies_addr_start  = 0x0E68
 -- $5 x position, 2bytes
 -- $8 y position, 2bytes
 local bullets_addr_start = 0x1428
+
+--Population size
+local population_size = 20
+
+--How many specimens are kept for the generation
+local elite_population_size = 1
+
+--How many are wiped out
+local cull_size = 10
+
+--How many new genomes are added.
+local new_genomes = 1
+
+----------------
+---END PARAMETERS
+----------------
+
+---------------
+---GAMESTATE---
+---------------
+
+-- Reads current game state.
+-- Defines an input matrix based on objects on screen and their positions
+-- Worries about projectiles, enemies and mega man
 
 local function create_input_table()
 	local input_table = {}
@@ -219,12 +243,6 @@ local function clear_input_table(table)
 	return table
 end
 
--- End Parameters
-
--- Reads current game state.
--- Defines an input matrix based on objects on screen and their positions
--- Worries about projectiles, enemies and mega man
-
 local function map_X(table, camx, camy)
 	local mm_x = mainmemory.read_u16_le(mega_x_addr) + 1 - camx
 	local mm_y = mainmemory.read_u16_le(mega_y_addr) + 1 - camy
@@ -232,7 +250,6 @@ local function map_X(table, camx, camy)
 	local celly = math.floor(mm_y / y_cell_size)
 	--console.log("Mega Man at " .. cellx .. " " .. celly)
 	table[cellx][celly] = 1.0
-
 end
 
 local function map_objects(table, camx, camy, base_addr, weight)
@@ -306,9 +323,13 @@ local function draw_input_table(table)
 	end
 end
 
+---------------
+--END GAMESTATE
+---------------
 
-
--- --- NN section
+----------------
+--NEURAL NETWORK
+----------------
 local function sigmoid(x)
 	return 1 / (1 + (math.exp(2.79, -x)))
 end
@@ -316,7 +337,7 @@ end
 local function activate_neuron(layer, neuron)
 	local sum = 0.0
 	for i=1, #layer do
-		sum = sum + weights[i] * layer[i]['value']()
+		sum = sum + neuron[i] * layer[i]['value']()
 	end
 	neuron['value'] = (function() return sigmoid(sum) end)
 end
@@ -326,7 +347,7 @@ local function create_neuron(previous_layer)
 	for i=1, #previous_layer do
 		neuron[i] = 0.0
 	end
-	neuron['activate'] = (function(prev_layer) return activate_neuron(prev_layer, neuron) end)
+	neuron['activate'] = (function() return activate_neuron(previous_layer, neuron) end)
 	return neuron
 end
 
@@ -348,25 +369,63 @@ end
 local function input_to_layer(input_table)
 	local layer = {	}
 	for i=1, input_size do
+		layer[i] = {}
 		layer[i]['value'] = (function() return input_table[math.floor(i / input_size)][i % input_size] end)
 	end
 	return layer
 end
 
+---------------------
+---END NEURAL NETWORK
+---------------------
 
--- Genetic Section
--- local function create_specimen()
+-----------
+---GENETICS
+-----------
 
--- 	local specimen = {}
--- 	local 
+local layer_names = {'layer1', 'layer2', 'layer3', 'layer4'}
 
--- end
+local function create_specimen(input_layer)
+	local specimen = {}
+	specimen['layer1'] = create_layer(input_layer, 32)
+	specimen['layer2'] = create_layer(specimen['layer1'], 16) 
+	specimen['layer3'] = create_layer(specimen['layer2'], 8)
+	specimen['layer4'] = create_layer(specimen['layer2'], 4)
+	return specimen
+end
 
+local function randomize_specimen(spec)
+	for j=1, #layer_names do
+		for i=1, #(spec[layer_names[j]]) do
+			spec[layer_names[j]][i] = math.random()
+		end	
+	end
+end
 
+local function breed(parent1, parent2, target)
+	for j=1, #layer_names do
+		for i=1, #(target[layer_names[j]]) do
+			--randomly chooses a parent for this weight
+			target[layer_names[j]][i] = (math.random(2) == 1) ? parent1[layer_names[j]][i] : parent2[layer_names[j]][i]
+		end	
+	end
+end
 
----
+local function create_population(input_layer)
+	local population = {}
+	for i=1, population_size do
+		local spec = create_specimen(input_layer)
+		randomize_specimen(spec)
+		population[i] = create_specimen(input_layer)
+	end
+	return population
+end
+---------------
+---END GENETICS
+---------------
 
-local table = create_input_table()
+local input_table = create_input_table()
+local input_layer = input_to_layer(table)
 
 while true do
 	-- scaler()
@@ -379,8 +438,10 @@ while true do
 
 	--mainmemory.writebyte(0x0BFF, 0x4F)
 
-	map_input_table(table)
-	draw_input_table(table)
+	map_input_table(input_table)
+	draw_input_table(input_table)
+
+	
 
 	emu.frameadvance()
 end
