@@ -411,7 +411,11 @@ local function breed(parent1, parent2, target)
 	for j=1, #layer_names do
 		for i=1, #(target[layer_names[j]]) do
 			--randomly chooses a parent for this weight.
-			target[layer_names[j]][i] = (math.random(2) == 1) ? parent1[layer_names[j]][i] : parent2[layer_names[j]][i]
+			if (math.random(2) == 1) then
+				target[layer_names[j]][i] =	 parent1[layer_names[j]][i]
+			else
+				target[layer_names[j]][i] = parent2[layer_names[j]][i]
+			end
 		end	
 	end
 end
@@ -441,11 +445,11 @@ local function adapt(pop)
 		breed(pop[math.random(cull_size)], pop[math.min( 1, math.random(cull_size) - 1)], pop[i])
 	end
 
-	for i= 1+ elite_population_size, #pop - cull_size -1 do
+	for i= 1 + elite_population_size, #pop - cull_size -1 do
 		mutate(pop[i])
 	end
 
-	for #pop - new_genomes, #pop do
+	for i = #pop - new_genomes, #pop do
 		randomize_specimen(pop[i])
 	end
 end
