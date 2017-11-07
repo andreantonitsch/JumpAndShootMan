@@ -157,11 +157,11 @@
 --------------
 memory.usememorydomain("CARTROM")
 
-local input_size = 8 -- defines an 8x8 input matrix
+local input_size = 16 -- defines an 8x8 input matrix
 
 -- SNES resolution is 256 x 224
-local x_cell_size = math.ceil( 256 / input_size  ) 
-local y_cell_size = math.ceil( 224  / input_size  )
+local x_cell_size = math.floor( 256 / input_size  ) 
+local y_cell_size = math.floor( 224  / input_size  )
 
 --2byes
 --ADDRESS FOR MEGAMAN'S POSITION
@@ -258,14 +258,16 @@ end
 
 local function map_objects(table, camx, camy, base_addr, weight)
 	local write = 0x01
-	for i = 1, 15 do
-		write = mainmemory.readbyte(base_addr + i * obj_step)
-		if write and write ~= 0x01 then
-			local obj_x = mainmemory.read_u16_le(base_addr + 0x5) +1 - camx
-			local obj_y = mainmemory.read_u16_le(base_addr + 0x8) +1 - camy
+	for i = 0, 14 do
+		local obj_addr = base_addr + i * obj_step
+		write = mainmemory.readbyte( obj_addr )
+
+		if write and write ~= 0x00 then
+			local obj_x = mainmemory.read_u16_le(obj_addr + 0x5) +1 - camx
+			local obj_y = mainmemory.read_u16_le(obj_addr + 0x8) +1 - camy
 			local cellx = math.floor(obj_x / x_cell_size)
 			local celly = math.floor(obj_y / y_cell_size)
-			if cellx < 8 and cellx >= 0  and celly < 8 and celly >=0  then
+			if cellx < input_size and cellx >= 0  and celly < input_size and celly >=0  then
 				--console.log("obj x y: " .. math.floor(obj_x / x_cell_size).. " " .. math.floor(obj_y / y_cell_size))
 				table[ cellx ][celly ] = weight 
 			end
@@ -335,7 +337,7 @@ end
 --NEURAL NETWORK
 ----------------
 local function sigmoid(x)
-	return 1 / (1 + (math.exp(2.79, -x)))
+	return 1 / (1 + (math.exp(2.72, -x)))
 end
 
 local function activate_neuron(layer, neuron)
@@ -387,14 +389,16 @@ end
 ---GENETICS
 -----------
 
-local layer_names = {'layer1', 'layer2', 'layer3', 'layer4'}
+local layer_names = {'layer1', 'layer2', 'layer3'} --, 'layer4'}
+
+local function random_weight() return ((math.random() * 2) -1) end
 
 local function create_specimen(input_layer)
 	local specimen = {}
-	specimen['layer1'] = create_layer(input_layer, 32)
+	specimen['layer1'] = create_layer(input_layer, 64)
 	specimen['layer2'] = create_layer(specimen['layer1'], 16) 
-	specimen['layer3'] = create_layer(specimen['layer2'], 8)
-	specimen['layer4'] = create_layer(specimen['layer2'], 4)
+	--specimen['layer3'] = create_layer(specimen['layer2'], 8)
+	specimen['layer3'] = create_layer(specimen['layer2'], 4)
 	specimen['fitness'] = 0.0
 	return specimen
 end
@@ -402,7 +406,7 @@ end
 local function randomize_specimen(spec)
 	for j=1, #layer_names do
 		for i=1, #(spec[layer_names[j]]) do
-			spec[layer_names[j]][i] = math.random()
+			spec[layer_names[j]][i] = random_weight()
 		end	
 	end
 end
@@ -424,7 +428,7 @@ local function mutate(spec)
 	for j=1, #layer_names do
 		for i=1, #(spec[layer_names[j]]) do
 			--averages out the mutation and current weight.
-			spec[layer_names[j]][i] = (math.random() * mutation_strength) + (spec[layer_names[j]][i] * (1 - mutation_strength)) 
+			spec[layer_names[j]][i] = (random_weight() * mutation_strength) + (spec[layer_names[j]][i] * (1 - mutation_strength)) 
 		end	
 	end
 end
