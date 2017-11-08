@@ -157,7 +157,7 @@
 --------------
 memory.usememorydomain("CARTROM")
 
-local Filename = "T4_Fundini.state"
+local Filename = "T4_Bordini.State"
 
 local input_size = 16 -- defines an 16x16 input matrix
 
@@ -353,7 +353,7 @@ local function activate_neuron(layer, neuron)
 	for i=1, #layer do
 		sum = sum + neuron[i] * layer[i]['value']()
 	end
-	console.log('neuron activated')
+	--console.log('neuron activated')
 	neuron['value'] = (function() return sigmoid(sum) end)
 end
 
@@ -409,7 +409,7 @@ local function measure_fitness()
 	return mainmemory.readbyte( mega_health_addr ) - mainmemory.readbyte( boss_health_addr )
 end
 
-local function random_weight() return ((math.random() * 2) -1) end
+local function random_weight() return ((math.random() * 4) * (-2)) end
 
 local function activate_specimen(spec)
 	for j=1, #layer_names do
@@ -421,8 +421,8 @@ end
 
 local function create_specimen(input_layer)
 	local specimen = {}
-	specimen['layer1'] = create_layer(input_layer, 64)
-	specimen['layer2'] = create_layer(specimen['layer1'], 16) 
+	specimen['layer1'] = create_layer(input_layer, 16)
+	specimen['layer2'] = create_layer(specimen['layer1'], 8) 
 	--specimen['layer3'] = create_layer(specimen['layer2'], 8)
 	specimen['output_layer'] = create_layer(specimen['layer2'], 4)
 	specimen['fitness'] = 0.0
@@ -512,18 +512,16 @@ ButtonNames = {
 }
 
 --List of to be pressed inputs
-inputs = {}
-
-local function clear_inputs()
+local function clear_inputs(inputs)
 	for i=1, #ButtonNames do	
 		inputs["P1 " .. ButtonNames[i]] = false
 	end
 end
 
-local function map_layer_to_inputs(layer)
-	clear_inputs()
+local function map_layer_to_inputs(layer, inputs)
+	clear_inputs(inputs)
 	for i=1, #ButtonNames do
-		if(layer[i]['value']() > 0) then
+		if layer[i]['value']() >= 0 then
 			inputs["P1 " .. ButtonNames[i]] = true
 		end
 	end
@@ -537,16 +535,13 @@ end
 local input_table = create_input_table()
 local input_layer = input_to_layer(input_table)
 
--- sets Mega's max  and current health to the maximum possible
---This is just so each run runs longer.
---mainmemory.writebyte(0x1F9A, 0x20)
---mainmemory.writebyte(0x0BCF, 0x20)
-
 local current_generation = 0
 
+local inputs = {}
+clear_inputs(inputs)
 
 local pop = create_population(input_layer)
-
+console.log(inputs)
 while true do
 	-- scaler()
 	-- if draw_megaman == true then
@@ -561,6 +556,11 @@ while true do
 		
 		savestate.load(Filename);
 
+		-- sets Mega's max  and current health to the maximum possible
+		--This is just so each run runs longer.
+		mainmemory.writebyte(0x1F9A, 0x20)
+		mainmemory.writebyte(0x0BCF, 0x20)
+
 		local specimen = pop[spec_counter]
 
 		while mainmemory.readbyte( mega_health_addr ) > 0 and mainmemory.readbyte( boss_health_addr ) do
@@ -569,14 +569,22 @@ while true do
 
 			activate_specimen(specimen)
 
-			map_layer_to_inputs(specimen['output_layer'])
+			map_layer_to_inputs(specimen['output_layer'], inputs)
 			
 			--draw_input_table(input_table)
 		
 			--mainmemory.readbyte( 0x0E8F  )
-			
+
+
 			gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
-		
+
+			joypad.set(inputs)
+
+			gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']), color, 7)
+			gui.drawText(0, 24+110, "Buttons: " .. 'Y ' .. tostring( inputs['P1 Y']), color, 7)
+			gui.drawText(0, 24+100, "Buttons: " .. 'R ' .. tostring( inputs['P1 Right']), color, 7)
+			gui.drawText(0, 24+90, "Buttons: " .. 'L ' .. tostring( inputs['P1 Left']), color, 7)
+
 			emu.frameadvance()
 
 			specimen['fitness'] = measure_fitness()
@@ -589,6 +597,7 @@ while true do
 		spec_counter = spec_counter + 1
 	end
 	--mainmemory.writebyte(0x0BFF, 0x4F)
+	adapt(pop)
 	current_generation = current_generation + 1
 
 end
