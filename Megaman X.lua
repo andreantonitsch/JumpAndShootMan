@@ -348,6 +348,10 @@ local function sigmoid(x)
 	return 1 / (1 + (math.exp(2.72, -x)))
 end
 
+local function threshold (x)
+	if (x > 0.5) then return 1.0 else return 0.0 end
+end
+
 local function activate_neuron(layer, neuron)
 	local sum = 0.0
 	for i=1, #layer do
@@ -409,7 +413,7 @@ local function measure_fitness()
 	return mainmemory.readbyte( mega_health_addr ) - mainmemory.readbyte( boss_health_addr )
 end
 
-local function random_weight() return ((math.random() * 4) * (-2)) end
+local function random_weight() return ((math.random() * 200) -100) end
 
 local function activate_specimen(spec)
 	for j=1, #layer_names do
@@ -521,7 +525,7 @@ end
 local function map_layer_to_inputs(layer, inputs)
 	clear_inputs(inputs)
 	for i=1, #ButtonNames do
-		if layer[i]['value']() >= 0 then
+		if layer[i]['value']() >= 0.5 then
 			inputs["P1 " .. ButtonNames[i]] = true
 		end
 	end
@@ -563,7 +567,7 @@ while true do
 
 		local specimen = pop[spec_counter]
 
-		while mainmemory.readbyte( mega_health_addr ) > 0 and mainmemory.readbyte( boss_health_addr ) do
+		while mainmemory.readbyte( mega_health_addr ) > 0 and mainmemory.readbyte( boss_health_addr ) > 0 do
 			
 			map_input_table(input_table)
 
