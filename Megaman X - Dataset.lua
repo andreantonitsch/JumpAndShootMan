@@ -205,8 +205,12 @@ local enemies_addr_start  = 0x0E68
 -- $8 y position, 2bytes
 local bullets_addr_start = 0x1428
 
+local megaman_map_weight = 200.0
+local boss_map_weight = 100.0
+local bullets_map_weight = 50.0
+
 -- Number of iterations to record
-local iterations = 10
+local iterations = 1
 
 local dataset_file = "Dataset.txt"
 
@@ -250,7 +254,7 @@ local function map_X(table, camx, camy)
 	local cellx = math.floor(mm_x / x_cell_size)
 	local celly = math.floor(mm_y / y_cell_size)
 	--console.log("Mega Man at " .. cellx .. " " .. celly)
-	table[cellx][celly] = 1.0
+	table[cellx][celly] = megaman_map_weight
 end
 
 local function map_objects(table, camx, camy, base_addr, weight)
@@ -274,11 +278,11 @@ local function map_objects(table, camx, camy, base_addr, weight)
 end	
 
 local function map_enemies(table, camx, camy)
-	return map_objects(table, camx, camy, enemies_addr_start, 0.5)
+	return map_objects(table, camx, camy, enemies_addr_start, boss_map_weight)
 end
 
 local function map_bullets(table, camx, camy)
-	return map_objects(table, camx, camy, bullets_addr_start, 0.25)
+	return map_objects(table, camx, camy, bullets_addr_start, bullets_map_weight)
 end
 
 local function map_input_table(table)
@@ -307,13 +311,13 @@ local function draw_input_table(table)
 		for j = 0, #table do
 			local table_value = table[i][j]
 			if table_value then
-				if table_value == 1.0 then
+				if table_value == megaman_map_weight then
 					fill = fill_color4
 					outl = outl_color4
-				elseif table_value == 0.5 then
+				elseif table_value == boss_map_weight then
 					fill = fill_color1
 					outl = outl_color1
-				elseif table_value == 0.25 then
+				elseif table_value == bullets_map_weight then
 					fill = fill_color3
 					outl = outl_color3
 				else
@@ -348,6 +352,16 @@ local function clear_inputs(inputs)
 	end
 end
 
+local function button_to_output(buttons, outputs)
+	for i=1, #ButtonNames do
+		if buttons[i] then
+			outputs[i] = 1.0
+		else
+			outputs[i] = 0.0
+		end
+	end
+end
+
 --------------
 ---END INPUTS-
 --------------
@@ -361,23 +375,41 @@ local function record_state(dataset, input_table, output, iteration)
 
 	dataset[iteration]['table'] = {}
 
-	for i=1, input_size do
+	for i = 0, input_size-1 do
 		dataset[iteration]['table'][i] = {}
-		for j=1, input_size do
+		for j = 0, input_size-1 do
 			dataset[iteration]['table'][i][j] = input_table[i][j]
 		end
 	end
 	
 	dataset[iteration]['output'] = {}
 	for i=1, #output do
-		dataset[iteration]['output'] = output[i]
+		dataset[iteration]['output'][i] = output[i]
 	end
-
+	return dataset
 end
 
 local function write_dataset(dataset)
+	local f = io.open("Dataset.txt","w")
 
+	for frame=1, #dataset do
+		f:write(tostring(frane) .. " ")
+
+		for o=1, #ButtonNames do
+			f:write(tostring(dataset[frame]['output'][o]) .. " ")
+		end
+
+		for i = 0, input_size-1 do
+			for j = 0, input_size-1 do
+				f:write(tostring(dataset[frame]['table'][i][j]) .. " ")
+			end
+		end
+		f:write("\n")
+	end
+	f:close()
 end
+
+
 --------------
 ---END DATASET
 --------------
@@ -393,6 +425,7 @@ clear_inputs(inputs)
 
 local dataset = {}
 
+local outputs = {}
 	
 local frame = 1
 
@@ -406,7 +439,7 @@ while true do
 	-- end
 
 
-	while iterations >= 0 do
+	while iterations > 0 do
 		savestate.load(State_filename);
 
 		-- sets Mega's max  and current health to the maximum possible
@@ -419,9 +452,10 @@ while true do
 			map_input_table(input_table)
 
 			draw_input_table(input_table)
-		
-			--mainmemory.readbyte( 0x0E8F  )
 
+			--mainmemory.readbyte( 0x0E8F  )
+ 			
+			 gui.drawText(0, 24+150, "Boss HP: " .. tostring(mainmemory.readbyte( boss_health_addr )), color, 9)
 			-- gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
 
 			-- gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']), color, 7)
@@ -430,8 +464,12 @@ while true do
 			-- gui.drawText(0, 24+90, "Buttons: " .. 'L ' .. tostring( inputs['P1 Left']), color, 7)
 
 			emu.frameadvance()
+			
+			local buttons = joypad.get()
 
-			record_state(dataset, input_table, buttons, frame)
+			button_to_output(buttons, outputs)
+
+			dataset = record_state(dataset, input_table, outputs, frame)
 
 			frame = frame + 1
 		end
@@ -439,5 +477,5 @@ while true do
 	end
 	--mainmemory.writebyte(0x0BFF, 0x4F)
 	write_dataset(dataset)
-
+	break
 end
