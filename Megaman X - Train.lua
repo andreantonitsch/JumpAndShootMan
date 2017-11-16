@@ -158,6 +158,7 @@
 memory.usememorydomain("CARTROM")
 
 local State_filename = "T4_Bordini.State"
+local Dataset_filename = "Dataset.txt"
 
 local input_size = 16 -- defines an 16x16 input matrix
 
@@ -169,6 +170,8 @@ local y_cell_size = math.floor( 224  / input_size  )
 --ADDRESS FOR MEGAMAN'S POSITION
 local mega_x_addr = 0xBAD
 local mega_y_addr = 0xBB0
+
+local mega_facing_addr = 0xBA8 + 0x11
 
 --2bytes
 --ADRESS FOR CAMERA'S POSITION
@@ -254,9 +257,7 @@ local function map_X(table, camx, camy)
 	local cellx = math.floor(mm_x / x_cell_size)
 	local celly = math.floor(mm_y / y_cell_size)
 	--console.log("Mega Man at " .. cellx .. " " .. celly)
-	table[cellx][celly] = megaman_map_weight
-
-		
+	
 	if mm_facing > 0x45 then
 		table[cellx][celly] = megaman_map_weight + 10
 	else
@@ -377,6 +378,51 @@ end
 --------------
 ----DATASET---
 --------------
+
+-- magiclines extracted from somewhere on the internets, not our code
+-- code by user lhf at stackoverflow
+-- https://stackoverflow.com/questions/19326368/iterate-over-lines-including-blank-lines
+function magiclines(s)
+        if s:sub(-1)~="\n" then s=s.."\n" end
+        return s:gmatch("(.-)\n")
+end
+
+local function read_dataset(dataset)
+	local f = io.open(Dataset_filename,"w")
+	local t = f:read("*all")
+
+	-- for each dataset entry
+	for line in magiclines(t) do
+
+		-- Parses the line
+		local l = line:gsub("^%s*(.-)%s*$", "%1")
+		local num_iter = string.gmatch(l,'[0-9]+')
+
+		local i = num_iter()
+		if i == nil then
+			break
+		end
+
+		dataset[i] = {}
+		dataset[i]['output'] = {}
+
+		for o=1, #ButtonNames do
+			dataset[i]['output'][o] = num_iter()
+		end
+
+		dataset[i]['table'] = {}
+
+		for m = 0, input_size-1 do
+		dataset[i]['table'][i][m] = {}
+			for n = 0, input_size-1 do
+				dataset[i]['table'][m][n] = num_iter()
+			end
+		end
+
+	end
+	f:close()
+end
+
 local function record_state(dataset, input_table, output, iteration)
 
 	dataset[iteration] = {}
@@ -401,7 +447,7 @@ local function write_dataset(dataset)
 	local f = io.open("Dataset.txt","w")
 
 	for frame=1, #dataset do
-		f:write(tostring(frane) .. " ")
+		f:write(tostring(frame) .. " ")
 
 		for o=1, #ButtonNames do
 			f:write(tostring(dataset[frame]['output'][o]) .. " ")
@@ -422,6 +468,96 @@ end
 ---END DATASET
 --------------
 
+----------------
+--NEURAL NETWORK
+----------------
+local function sigmoid(x)
+	return 1 / (1 + (math.exp(2.72, -x)))
+end
+
+local function threshold (x)
+	if (x > 0.5) then return 1.0 else return 0.0 end
+end
+
+local function activate_neuron(layer, neuron)
+	local sum = 0.0
+	for i=1, #layer do
+		sum = sum + neuron[i] * layer[i]['value']()
+	end
+	--console.log('neuron activated')
+	neuron['value'] = (function() return sigmoid(sum) end)
+end
+
+local function create_neuron(previous_layer)
+	local neuron = {}
+	for i=1, #previous_layer do
+		neuron[i] = 0.0
+	end
+	neuron['activate'] = (function() return activate_neuron(previous_layer, neuron) end)
+	return neuron
+end
+
+local function activate_layer(previous_layer, layer)
+	for i=1, #layer do
+		layer[i]['activate'](previous_layer)
+	end
+end
+
+local function create_layer( previous_layer, size)
+	local layer = {}
+	for i=1, size do
+		layer[i] = create_neuron(previous_layer)
+	end
+	layer['activate'] = (function() return activate_layer(previous_layer, layer) end)
+	return layer
+end
+
+
+local function input_to_layer(input_table)
+	local layer = {	}
+	for i=0, (input_size * input_size )-1 do
+		layer[i+1] = {}
+		local cellx = math.floor(i / input_size)
+		local celly = (i)  % input_size
+		--console.log(cellx, celly)
+		layer[i+1]['value'] = function() return  input_table[cellx][celly] end
+	end
+	layer['activate'] = function() return end
+	return layer
+end	
+
+local layer_names = {'layer1', 'layer2', 'output_layer'} --, 'layer4'}
+
+local function random_weight() return ((math.random()*2) -1) end
+
+local function create_network(input_layer)
+	local network = {}
+	specimen['layer1'] = create_layer(input_layer, 16)
+	specimen['layer2'] = create_layer(specimen['layer1'], 8) 
+	--specimen['layer3'] = create_layer(specimen['layer2'], 8)
+	specimen['output_layer'] = create_layer(specimen['layer2'], 4)
+	return network
+end
+
+local function activate_specimen(spec)
+	for j=1, #layer_names do
+		for i=1, #(spec[layer_names[j]]) do
+			spec[layer_names[j]]['activate']()
+		end	
+	end
+end
+
+local function load_weights(network)
+
+end
+
+local function write_weights(network)
+
+end
+
+---------------------
+---END NEURAL NETWORK
+---------------------
 
 local input_table = create_input_table()
 
@@ -430,12 +566,13 @@ local current_generation = 0
 local inputs = {}
 clear_inputs(inputs)
 
-
 local dataset = {}
 
 local outputs = {}
 	
 local frame = 1
+
+local mode = 'train'
 
 while true do
 	-- scaler()

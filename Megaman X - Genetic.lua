@@ -170,6 +170,8 @@ local y_cell_size = math.floor( 224  / input_size  )
 local mega_x_addr = 0xBAD
 local mega_y_addr = 0xBB0
 
+local mega_facing_addr = 0xBA8 + 0x11
+
 --2bytes
 --ADRESS FOR CAMERA'S POSITION
 local cam_x_addr = 0x00B4
@@ -408,20 +410,7 @@ end
 -----------
 
 local layer_names = {'layer1', 'layer2', 'output_layer'} --, 'layer4'}
-
-local function measure_fitness()
-	return mainmemory.readbyte( mega_health_addr ) - mainmemory.readbyte( boss_health_addr )
-end
-
 local function random_weight() return ((math.random() * 200) -100) end
-
-local function activate_specimen(spec)
-	for j=1, #layer_names do
-		for i=1, #(spec[layer_names[j]]) do
-			spec[layer_names[j]]['activate']()
-		end	
-	end
-end
 
 local function create_specimen(input_layer)
 	local specimen = {}
@@ -433,6 +422,22 @@ local function create_specimen(input_layer)
 	specimen['max_fitness'] = 0.0
 	return specimen
 end
+
+local function activate_specimen(spec)
+	for j=1, #layer_names do
+		for i=1, #(spec[layer_names[j]]) do
+			spec[layer_names[j]]['activate']()
+		end	
+	end
+end
+
+local function measure_fitness()
+	return mainmemory.readbyte( mega_health_addr ) - mainmemory.readbyte( boss_health_addr )
+end
+
+
+
+
 
 local function randomize_specimen(spec)
 	for j=1, #layer_names do
