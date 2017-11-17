@@ -217,6 +217,8 @@ local iterations = 1
 
 local dataset_file = "Dataset.txt"
 
+local learning_rate = 0.1
+
 ----------------
 ---END PARAMETERS
 ----------------
@@ -305,6 +307,14 @@ local function map_input_table(table)
 	map_enemies(table, camx, camy)
 	map_bullets(table, camx, camy)
 
+end
+
+local function map_input_from_dataset(table, dataset, frame)
+	for i = 0, #table do
+		for j = 0, #table do
+			table[i][j] = dataset[frame]['table'][i][j]
+		end
+	end
 end
 
 local function draw_input_table(table)
@@ -475,6 +485,10 @@ local function sigmoid(x)
 	return 1 / (1 + (math.exp(2.72, -x)))
 end
 
+local delta_sigmoid(x)
+	return sigmoid(x) * (1-sigmoid(x))
+end
+
 local function threshold (x)
 	if (x > 0.5) then return 1.0 else return 0.0 end
 end
@@ -483,15 +497,20 @@ local function activate_neuron(layer, neuron)
 	local sum = 0.0
 	for i=1, #layer do
 		sum = sum + neuron[i] * layer[i]['value']()
+		neuron['inputs'] = layer[i]['value']()
 	end
-	--console.log('neuron activated')
+
 	neuron['value'] = (function() return sigmoid(sum) end)
 end
 
 local function create_neuron(previous_layer)
 	local neuron = {}
+	neuron['inputs'] = {}
 	for i=1, #previous_layer do
-		neuron[i] = 0.0
+		neuron[i] = random_weight()
+
+		--stores the previous layer activations
+		neuron['inputs'][i] = 0.0
 	end
 	neuron['activate'] = (function() return activate_neuron(previous_layer, neuron) end)
 	return neuron
@@ -532,19 +551,111 @@ local function random_weight() return ((math.random()*2) -1) end
 
 local function create_network(input_layer)
 	local network = {}
-	specimen['layer1'] = create_layer(input_layer, 16)
-	specimen['layer2'] = create_layer(specimen['layer1'], 8) 
-	--specimen['layer3'] = create_layer(specimen['layer2'], 8)
-	specimen['output_layer'] = create_layer(specimen['layer2'], 4)
+	network['layer1'] = create_layer(input_layer, 16)
+	network['layer2'] = create_layer(network['layer1'], 8) 
+	--network['layer3'] = create_layer(network['layer2'], 8)
+	network['output_layer'] = create_layer(network['layer2'], 4)
 	return network
 end
 
-local function activate_specimen(spec)
+local function activate_network(network)
 	for j=1, #layer_names do
-		for i=1, #(spec[layer_names[j]]) do
-			spec[layer_names[j]]['activate']()
+		for i=1, #(network[layer_names[j]]) do
+			network[layer_names[j]]['activate']()
 		end	
 	end
+end
+
+local aprox_cost_derivative(output, expected)
+	return output - expected
+end
+
+local partial_derivative(x)
+	return x * (1-x)
+end
+
+local weight_error_delta(expected, output)
+	return (aprox_cost_derivative) * partial_derivative(output))
+end
+
+local function activate_and_backward_propagate(network, expected_output)
+	activate_network(network)
+
+	--list of errors
+	local errors = {}
+	local total_error = 0
+	for i = 1, #network['output_layer'] do
+		local ei = (expected_output[i] - network['output_layer'][i]['value'])
+		errors[i] = (1/2 * ei * ei)
+		total_error = total_error + errors[i]
+	end
+
+	--delta rule 
+	-- deltaTotalError / deltaWeight_j = -(expected_i - out_i) * out_i * (1 - out_i) * input_neuron_j_activation
+	-- can be written differently
+
+	--nabla_w
+	local delta_weights_by_layer = {}
+
+	local deltas = {}
+	delta_weights_by_layer['output_layer'] = {}
+		delta_weights_by_layer['output_layer'][i] = {}
+		
+	--computes cost
+	for j=1, #network['output_layer'][i] do
+		-- delta of error in respect to weight_j.
+		-- follows the above formula
+		deltas[j] = aprox_cost_derivative(#network['output_layer'][j]['value'](), expected_output[j])--weight_error_delta(expected_output[i], )
+		deltas[j] = delta[j] * partial_derivative(#network['output_layer'][j]['value']())
+	end
+
+	--computes cost partia derivative in respect to input
+	--computes cost
+	for j=1, #network['output_layer'][i] do
+		delta_weights_by_layer['output_layer'][i][j] =  deltas[j] *  #network['output_layer'][i]['input'][j]
+	end
+	
+	--passes the calculated deltas backwards through each layer
+	for i = 1, #layer_names -1 do
+		local j = #layer_names - i
+		
+		delta_weights_by_layer[layer_names[j]] = {}
+		local delta_sum = 0
+
+		-- calculates all the weights and deltas
+		for m=1, #deltas do
+			for n=1, #network[layer_names[j]][0]['input'] do
+				delta_sum = delta_sum + delta[m] * network[layer_names[j]][0]['input'][n]
+			end
+		end
+
+	
+		for n=1, #network[layer_names[j]] do
+			deltas[n] = delta_sum * partial_derivative(network[layer_names[j]][n]['value']())
+
+			delta_weights_by_layer[layer_names[j]][n] = {}
+
+			for x = 1, #deltas do
+				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x]
+			end
+		end
+	end
+
+
+	--updoot weights
+	for i = 1, #layer_names do
+
+		for n = 1, #network[layer_names[i]] do
+
+			for w=1, #network[layer_names[i]][n] do
+				
+				network[layer_names[i]][n][w] = network[layer_names[i]][n] - (learning_rate * delta_weights_by_layer[layer_names[i]][n][w])
+			end
+		end	
+	end
+
+	return network
+
 end
 
 local function load_weights(network)
