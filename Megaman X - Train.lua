@@ -716,13 +716,11 @@ local input_table = create_input_table()
 local input_layer = input_to_layer(input_table)
 local network = create_network(input_layer)
 
-write_weights(network,Weights_filename)
+-- write_weights(network,Weights_filename)
 
-load_weights(network, Weights_filename)
+-- load_weights(network, Weights_filename)
 
-write_weights(network,Weights_filename .. "3")
-
-local current_generation = 0
+-- write_weights(network,Weights_filename .. "3")
 
 local inputs = {}
 clear_inputs(inputs)
@@ -735,7 +733,26 @@ local frame = 1
 
 local mode = 'train'
 
-while true do
+if mode == 'train' then
+
+	read_dataset(dataset)
+
+	for i = 1, #dataset do
+
+		map_input_from_dataset(input_table, dataset, i)
+
+		activate_and_backward_propagate(network, dataset[i]['output'])
+
+		if i % 10 == 0 then
+			write_weights(network,Weights_filename)
+		end
+
+	end
+
+else 
+
+end 
+--while true do
 	-- scaler()
 	-- if draw_megaman == true then
 	-- 	megaman()
@@ -745,43 +762,43 @@ while true do
 	-- end
 
 
-	while iterations > 0 do
-		savestate.load(State_filename);
+	-- while iterations > 0 do
+	-- 	savestate.load(State_filename);
 
-		-- sets Mega's max  and current health to the maximum possible
-		--This is just so each run runs longer.
-		mainmemory.writebyte(0x1F9A, 0x20)
-		mainmemory.writebyte(0x0BCF, 0x20)
+	-- 	-- sets Mega's max  and current health to the maximum possible
+	-- 	--This is just so each run runs longer.
+	-- 	mainmemory.writebyte(0x1F9A, 0x20)
+	-- 	mainmemory.writebyte(0x0BCF, 0x20)
 
-		while mainmemory.readbyte( mega_health_addr ) > 0 and mainmemory.readbyte( boss_health_addr ) > 0 do
+		-- while mainmemory.readbyte( mega_health_addr ) > 0 and mainmemory.readbyte( boss_health_addr ) > 0 do
 			
-			map_input_table(input_table)
+		-- 	map_input_table(input_table)
 
-			draw_input_table(input_table)
+		-- 	draw_input_table(input_table)
 
-			--mainmemory.readbyte( 0x0E8F  )
+		-- 	--mainmemory.readbyte( 0x0E8F  )
  			
-			 gui.drawText(0, 24+150, "Boss HP: " .. tostring(mainmemory.readbyte( boss_health_addr )), color, 9)
-			-- gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
+		-- 	 gui.drawText(0, 24+150, "Boss HP: " .. tostring(mainmemory.readbyte( boss_health_addr )), color, 9)
+		-- 	-- gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
 
-			-- gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']), color, 7)
-			-- gui.drawText(0, 24+110, "Buttons: " .. 'Y ' .. tostring( inputs['P1 Y']), color, 7)
-			-- gui.drawText(0, 24+100, "Buttons: " .. 'R ' .. tostring( inputs['P1 Right']), color, 7)
-			-- gui.drawText(0, 24+90, "Buttons: " .. 'L ' .. tostring( inputs['P1 Left']), color, 7)
+		-- 	-- gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']), color, 7)
+		-- 	-- gui.drawText(0, 24+110, "Buttons: " .. 'Y ' .. tostring( inputs['P1 Y']), color, 7)
+		-- 	-- gui.drawText(0, 24+100, "Buttons: " .. 'R ' .. tostring( inputs['P1 Right']), color, 7)
+		-- 	-- gui.drawText(0, 24+90, "Buttons: " .. 'L ' .. tostring( inputs['P1 Left']), color, 7)
 
-			emu.frameadvance()
+		-- 	emu.frameadvance()
 			
-			local buttons = joypad.get()
+		-- 	local buttons = joypad.get()
 
-			button_to_output(buttons, outputs)
+		-- 	button_to_output(buttons, outputs)
 
-			dataset = record_state(dataset, input_table, outputs, frame)
+		-- 	dataset = record_state(dataset, input_table, outputs, frame)
 
-			frame = frame + 1
-		end
-		iterations = iterations - 1
-	end
-	--mainmemory.writebyte(0x0BFF, 0x4F)
-	write_dataset(dataset)
-	break
-end
+		-- 	frame = frame + 1
+	-- 	end
+	-- 	iterations = iterations - 1
+	-- end
+	-- --mainmemory.writebyte(0x0BFF, 0x4F)
+	-- write_dataset(dataset)
+	-- break
+--end
