@@ -155,11 +155,16 @@
 --------------
 ----PARAMETERS
 --------------
+--refreshes the seed
+math.randomseed(os.time())
+math.random(); math.random(); math.random()
+
+
 memory.usememorydomain("CARTROM")
 
 local State_filename = "T4_Bordini.State"
 local Dataset_filename = "Dataset.txt"
-
+local Weights_filename = "Weights"
 local input_size = 16 -- defines an 16x16 input matrix
 
 -- SNES resolution is 256 x 224
@@ -398,7 +403,7 @@ function magiclines(s)
 end
 
 local function read_dataset(dataset)
-	local f = io.open(Dataset_filename,"w")
+	local f = io.open(Dataset_filename,"r")
 	local t = f:read("*all")
 
 	-- for each dataset entry
@@ -406,7 +411,7 @@ local function read_dataset(dataset)
 
 		-- Parses the line
 		local l = line:gsub("^%s*(.-)%s*$", "%1")
-		local num_iter = string.gmatch(l,'[0-9]+')
+		local num_iter = string.gmatch(l,'[0-9.-]+')
 
 		local i = num_iter()
 		if i == nil then
@@ -485,8 +490,12 @@ local function sigmoid(x)
 	return 1 / (1 + (math.exp(2.72, -x)))
 end
 
-local delta_sigmoid(x)
+local function delta_sigmoid(x)
 	return sigmoid(x) * (1-sigmoid(x))
+end
+
+local function random_weight() 
+	return ((math.random()*2) -1) 
 end
 
 local function threshold (x)
@@ -547,7 +556,7 @@ end
 
 local layer_names = {'layer1', 'layer2', 'output_layer'} --, 'layer4'}
 
-local function random_weight() return ((math.random()*2) -1) end
+
 
 local function create_network(input_layer)
 	local network = {}
@@ -566,16 +575,16 @@ local function activate_network(network)
 	end
 end
 
-local aprox_cost_derivative(output, expected)
+local function aprox_cost_derivative(output, expected)
 	return output - expected
 end
 
-local partial_derivative(x)
+local function partial_derivative(x)
 	return x * (1-x)
 end
 
-local weight_error_delta(expected, output)
-	return (aprox_cost_derivative) * partial_derivative(output))
+local function  weight_error_delta(expected, output)
+	return (aprox_cost_derivative(output, expected) * partial_derivative(output))
 end
 
 local function activate_and_backward_propagate(network, expected_output)
@@ -658,12 +667,45 @@ local function activate_and_backward_propagate(network, expected_output)
 
 end
 
-local function load_weights(network)
+local function load_weights(network, filename)
+	local f = io.open(filename,"r")
 
+	local t = f:read("*all")
+
+	local l = t:gsub("^%s*(.-)%s*$", "%1")
+	local num_iter = string.gmatch(l,'[0-9-.]+')
+
+	for i = 1, #layer_names do
+
+		for n = 1, #network[layer_names[i]] do
+
+			for w = 1, #network[layer_names[i]][n] do
+
+				network[layer_names[i]][n][w] = num_iter()
+				
+			end
+		end	
+	end
+
+	f:close()
 end
 
-local function write_weights(network)
+local function write_weights(network, filename)
 
+	local f = io.open(filename,"w")
+
+	for i = 1, #layer_names do
+
+		for n = 1, #network[layer_names[i]] do
+
+			for w=1, #network[layer_names[i]][n] do
+
+				f:write(tostring(network[layer_names[i]][n][w]) .. " ")
+				
+			end
+		end	
+	end
+	f:close()
 end
 
 ---------------------
@@ -671,6 +713,14 @@ end
 ---------------------
 
 local input_table = create_input_table()
+local input_layer = input_to_layer(input_table)
+local network = create_network(input_layer)
+
+write_weights(network,Weights_filename)
+
+load_weights(network, Weights_filename)
+
+write_weights(network,Weights_filename .. "3")
 
 local current_generation = 0
 
