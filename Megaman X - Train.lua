@@ -405,7 +405,7 @@ end
 local function read_dataset(dataset)
 	local f = io.open(Dataset_filename,"r")
 	local t = f:read("*all")
-
+	local frame_count = 1
 	-- for each dataset entry
 	for line in magiclines(t) do
 
@@ -418,24 +418,26 @@ local function read_dataset(dataset)
 			break
 		end
 
-		dataset[i] = {}
-		dataset[i]['output'] = {}
+		dataset[frame_count] = {}
+		dataset[frame_count]['output'] = {}
 
 		for o=1, #ButtonNames do
-			dataset[i]['output'][o] = num_iter()
+			dataset[frame_count]['output'][o] = num_iter()
 		end
 
-		dataset[i]['table'] = {}
+		dataset[frame_count]['table'] = {}
 
 		for m = 0, input_size-1 do
-		dataset[i]['table'][i][m] = {}
+		dataset[frame_count]['table'][m] = {}
 			for n = 0, input_size-1 do
-				dataset[i]['table'][m][n] = num_iter()
+				dataset[frame_count]['table'][m][n] = num_iter()
 			end
 		end
-
+		frame_count = frame_count + 1
 	end
 	f:close()
+	console.log(#dataset)
+	return dataset
 end
 
 local function record_state(dataset, input_table, output, iteration)
@@ -594,7 +596,7 @@ local function activate_and_backward_propagate(network, expected_output)
 	local errors = {}
 	local total_error = 0
 	for i = 1, #network['output_layer'] do
-		local ei = (expected_output[i] - network['output_layer'][i]['value'])
+		local ei = (expected_output[i] - network['output_layer'][i]['value']())
 		errors[i] = (1/2 * ei * ei)
 		total_error = total_error + errors[i]
 	end
@@ -608,14 +610,15 @@ local function activate_and_backward_propagate(network, expected_output)
 
 	local deltas = {}
 	delta_weights_by_layer['output_layer'] = {}
-		delta_weights_by_layer['output_layer'][i] = {}
+
 		
 	--computes cost
-	for j=1, #network['output_layer'][i] do
+	for j=1, #network['output_layer'][1] do
 		-- delta of error in respect to weight_j.
 		-- follows the above formula
-		deltas[j] = aprox_cost_derivative(#network['output_layer'][j]['value'](), expected_output[j])--weight_error_delta(expected_output[i], )
-		deltas[j] = delta[j] * partial_derivative(#network['output_layer'][j]['value']())
+		delta_weights_by_layer['output_layer'][j] = {}
+		deltas[j] = aprox_cost_derivative(network['output_layer'][j]['value'](), expected_output[j])--weight_error_delta(expected_output[i], )
+		deltas[j] = deltas[j] * partial_derivative(network['output_layer'][j]['value']())
 	end
 
 	--computes cost partia derivative in respect to input
@@ -734,11 +737,11 @@ local frame = 1
 local mode = 'train'
 
 if mode == 'train' then
-
-	read_dataset(dataset)
+	console.log('training')
+	dataset = read_dataset(dataset)
 
 	for i = 1, #dataset do
-
+		console.log('training, iteration ' .. tostring(i))
 		map_input_from_dataset(input_table, dataset, i)
 
 		activate_and_backward_propagate(network, dataset[i]['output'])
