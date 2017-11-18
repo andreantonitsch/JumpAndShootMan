@@ -170,6 +170,8 @@ local y_cell_size = math.floor( 224  / input_size  )
 local mega_x_addr = 0xBAD
 local mega_y_addr = 0xBB0
 
+local mega_facing_addr = 0xBA8 + 0x11
+
 --2bytes
 --ADRESS FOR CAMERA'S POSITION
 local cam_x_addr = 0x00B4
@@ -254,13 +256,11 @@ local function map_X(table, camx, camy)
 	local cellx = math.floor(mm_x / x_cell_size)
 	local celly = math.floor(mm_y / y_cell_size)
 	--console.log("Mega Man at " .. cellx .. " " .. celly)
-	table[cellx][celly] = megaman_map_weight
 
-		
 	if mm_facing > 0x45 then
-		table[cellx][celly] = megaman_map_weight + 10
+		table[cellx][celly] = megaman_map_weight + 10.0
 	else
-		table[cellx][celly] = megaman_map_weight - 10
+		table[cellx][celly] = megaman_map_weight - 10.0
 	end
 
 end
@@ -319,9 +319,11 @@ local function draw_input_table(table)
 		for j = 0, #table do
 			local table_value = table[i][j]
 			if table_value then
-				if table_value == megaman_map_weight then
+				if table_value == megaman_map_weight -10 then
 					fill = fill_color4
 					outl = outl_color4
+				elseif table_value == megaman_map_weight + 10 then
+					fill = fill_color4 + 0xFFF
 				elseif table_value == boss_map_weight then
 					fill = fill_color1
 					outl = outl_color1
@@ -362,7 +364,7 @@ end
 
 local function button_to_output(buttons, outputs)
 	for i=1, #ButtonNames do
-		if buttons[i] then
+		if buttons["P1 " .. ButtonNames[i]] then
 			outputs[i] = 1.0
 		else
 			outputs[i] = 0.0
@@ -401,7 +403,7 @@ local function write_dataset(dataset)
 	local f = io.open("Dataset.txt","w")
 
 	for frame=1, #dataset do
-		f:write(tostring(frane) .. " ")
+		f:write(tostring(frame) .. " ")
 
 		for o=1, #ButtonNames do
 			f:write(tostring(dataset[frame]['output'][o]) .. " ")
@@ -463,20 +465,21 @@ while true do
 
 			--mainmemory.readbyte( 0x0E8F  )
  			
-			 gui.drawText(0, 24+150, "Boss HP: " .. tostring(mainmemory.readbyte( boss_health_addr )), color, 9)
+			gui.drawText(0, 24+150, "Boss HP: " .. tostring(mainmemory.readbyte( boss_health_addr )), color, 9)
+			--gui.drawText(0, 24+170, "Facing: " .. tostring(mainmemory.readbyte( mega_facing_addr )), color, 9)
 			-- gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
 
 			-- gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']), color, 7)
 			-- gui.drawText(0, 24+110, "Buttons: " .. 'Y ' .. tostring( inputs['P1 Y']), color, 7)
 			-- gui.drawText(0, 24+100, "Buttons: " .. 'R ' .. tostring( inputs['P1 Right']), color, 7)
 			-- gui.drawText(0, 24+90, "Buttons: " .. 'L ' .. tostring( inputs['P1 Left']), color, 7)
-
+			gui.drawText(0, 24+170, "Buttons: " .. tostring(mainmemory.readbyte( mega_facing_addr )), color, 9)
 			emu.frameadvance()
 			
 			local buttons = joypad.get()
 
 			button_to_output(buttons, outputs)
-
+			--gui.drawText(0, 24+170, "Buttons: " .. tostring(outputs[1]) .. ' ' .. tostring(outputs[2]) .. ' ' .. tostring(outputs[3]) .. ' ' .. tostring(outputs[4]), color, 9)
 			dataset = record_state(dataset, input_table, outputs, frame)
 
 			frame = frame + 1
