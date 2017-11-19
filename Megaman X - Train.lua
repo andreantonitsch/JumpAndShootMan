@@ -627,7 +627,7 @@ local function activate_and_backward_propagate(network, expected_output)
 	--computes cost
 	for i=1, #network['output_layer'] do
 		for j=1, #network['output_layer'][i]['inputs'] do
-			delta_weights_by_layer['output_layer'][i][j] =  deltas[j] *  network['output_layer'][i]['inputs'][j]
+			delta_weights_by_layer['output_layer'][i][j] =  deltas[i] * network['output_layer'][i]['inputs'][j]
 		end
 	end
 	--passes the calculated deltas backwards through each layer
@@ -639,8 +639,8 @@ local function activate_and_backward_propagate(network, expected_output)
 
 		-- calculates all the weights and deltas
 		for m=1, #deltas do
-			for n=1, #network[layer_names[j]][0]['input'] do
-				delta_sum = delta_sum + delta[m] * network[layer_names[j]][0]['input'][n]
+			for n=1, #network[layer_names[j]][1]['inputs'] do
+				delta_sum = delta_sum + deltas[m] * network[layer_names[j]][1]['inputs'][n]
 			end
 		end
 
@@ -664,7 +664,10 @@ local function activate_and_backward_propagate(network, expected_output)
 
 			for w=1, #network[layer_names[i]][n] do
 				
-				network[layer_names[i]][n][w] = network[layer_names[i]][n] - (learning_rate * delta_weights_by_layer[layer_names[i]][n][w])
+				console.log(delta_weights_by_layer[layer_names[i]][n][w])
+
+				network[layer_names[i]][n][w] = network[layer_names[i]][n][w] - (learning_rate * delta_weights_by_layer[layer_names[i]][n][w])
+
 			end
 		end	
 	end
