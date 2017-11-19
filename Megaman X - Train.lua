@@ -635,27 +635,48 @@ local function activate_and_backward_propagate(network, expected_output)
 		local j = #layer_names - i
 		
 		delta_weights_by_layer[layer_names[j]] = {}
-		local delta_sum = 0
+		local delta_sum = 0.0
 
-		-- calculates all the weights and deltas
+		--calculates all the weights . delta, dot product
 		for m=1, #deltas do
-			for n=1, #network[layer_names[j]][1]['inputs'] do
-				delta_sum = delta_sum + deltas[m] * network[layer_names[j]][1]['inputs'][n]
+			for n=1, #network[layer_names[j]] do
+				for w=1, #network[layer_names[j]][n] do
+					delta_sum = delta_sum + deltas[m] * network[layer_names[j+1]][n][w]
+				end
 			end
 		end
 
-	
-		for n=1, #network[layer_names[j]] do
-			deltas[n] = delta_sum * partial_derivative(network[layer_names[j]][n]['value']())
-
-			delta_weights_by_layer[layer_names[j]][n] = {}
-
-			for x = 1, #deltas do
-				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x]
-			end
+		for n=1, #network[layer_names[j]do
+			delta[n] = delta_sum *  partial_derivative(network[layer_names[j]][n]['value']())
 		end
+
+
+
 	end
 
+
+		-- local delta_sum = 0
+
+		-- -- calculates all the weights and deltas
+		-- for m=1, #deltas do
+		-- 	for n=1, #network[layer_names[j]][1]['inputs'] do
+		-- 		delta_sum = delta_sum + deltas[m] * network[layer_names[j]][1]['inputs'][n]
+		-- 	end
+		-- end
+
+		-- console.log("delta_sum: " .. tostring(delta_sum))
+
+		-- for n=1, #network[layer_names[j]] do
+		-- 	--deltas[n] = delta_sum * partial_derivative(network[layer_names[j]][n]['value']())
+
+		-- 	delta_weights_by_layer[layer_names[j]][n] = {}
+
+		-- 	for x = 1, #deltas do
+		-- 		delta_weights_by_layer[layer_names[j]][n][x] = deltas[x]
+		-- 	end
+		-- end
+
+	--end
 
 	--updoot weights
 	for i = 1, #layer_names do
