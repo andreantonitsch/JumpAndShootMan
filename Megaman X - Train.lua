@@ -638,21 +638,27 @@ local function activate_and_backward_propagate(network, expected_output)
 		local delta_sum = 0.0
 
 		--calculates all the weights . delta, dot product
-		for m=1, #deltas do
-			for n=1, #network[layer_names[j]] do
-				for w=1, #network[layer_names[j]][n] do
-					delta_sum = delta_sum + deltas[m] * network[layer_names[j]][n][w]
-				end
+--		for m=1, #deltas do
+		for n=1, #network[layer_names[j+1]] do
+			for w=1, #network[layer_names[j+1]][n] do
+				delta_sum = delta_sum + deltas[n+w] * network[layer_names[j+1]][n][w]
 			end
 		end
+--		end
 
 		for n=1, #network[layer_names[j]] do
 			deltas[n] = delta_sum *  partial_derivative(network[layer_names[j]][n]['value']())
 		end
 
 		for x = 1, #deltas do
+			console.log(#deltas)
 			for n=1, #network[layer_names[j]] do
-				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x] * network[layer_names[j]][n]['inputs'][x]
+				console.log(#network[layer_names[j]][n])
+				console.log(#network[layer_names[j]][n]['inputs'])
+				console.log(x)
+				console.log(n)
+				console.log(j)
+				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x] * network[layer_names[j-1]][x]['inputs'][x]
 			end
 		end
 
