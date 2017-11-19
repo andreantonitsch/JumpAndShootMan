@@ -410,6 +410,7 @@ end
 -----------
 
 local layer_names = {'layer1', 'layer2', 'output_layer'} --, 'layer4'}
+
 local function random_weight() return ((math.random() * 200) -100) end
 
 local function create_specimen(input_layer)
@@ -434,10 +435,6 @@ end
 local function measure_fitness()
 	return mainmemory.readbyte( mega_health_addr ) - mainmemory.readbyte( boss_health_addr )
 end
-
-
-
-
 
 local function randomize_specimen(spec)
 	for j=1, #layer_names do
