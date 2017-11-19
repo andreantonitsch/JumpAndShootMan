@@ -510,7 +510,7 @@ local function activate_neuron(layer, neuron)
 		sum = sum + neuron[i] * layer[i]['value']()
 		neuron['inputs'][i] = 1.0 * layer[i]['value']()
 	end
-
+	neuron['sum_value'] = (function() return sum end)
 	neuron['value'] = (function() return sigmoid(sum) end)
 end
 
@@ -562,8 +562,8 @@ local layer_names = {'layer1', 'layer2', 'output_layer'} --, 'layer4'}
 
 local function create_network(input_layer)
 	local network = {}
-	network['layer1'] = create_layer(input_layer, 16)
-	network['layer2'] = create_layer(network['layer1'], 8) 
+	network['layer1'] = create_layer(input_layer, 32)
+	network['layer2'] = create_layer(network['layer1'], 16) 
 	--network['layer3'] = create_layer(network['layer2'], 8)
 	network['output_layer'] = create_layer(network['layer2'], 4)
 	return network
@@ -594,99 +594,150 @@ local function activate_and_backward_propagate(network, expected_output)
 
 	--list of errors
 	local errors = {}
+	errors['output_layer'] = {}
 	local total_error = 0
 	for i = 1, #network['output_layer'] do
-		local ei = (expected_output[i] - network['output_layer'][i]['value']())
-		errors[i] = (1/2 * ei * ei)
-		total_error = total_error + errors[i]
+		local ei = (expected_output[i] - network['output_layer'][i]['value']())  * partial_derivative(network['output_layer'][i]['value']())
+		errors['output_layer'][i] = ei--(1/2 * ei * ei)
+		total_error = total_error + errors['output_layer'][i]
 	end
 
-	--delta rule 
-	-- deltaTotalError / deltaWeight_j = -(expected_i - out_i) * out_i * (1 - out_i) * input_neuron_j_activation
-	-- can be written differently
 
-	console.log("total error: " .. tostring(total_error))
+	-- for each hidden layer
+	for l = 1, (#layer_names) -1 do 
 
-	--nabla_w
-	local delta_weights_by_layer = {}
+		local j = (#layer_names) - l
 
-	local deltas = {}
-	delta_weights_by_layer['output_layer'] = {}
+		errors[layer_names[j]] = {}
+
+		--console.log(j)
+		-- for each neuron n in layer l
+		for n = 1, #(network[layer_names[j]]) do
+
+			errors[layer_names[j]][n] = 0.0
+
+			--console.log(j+1)
+			--console.log(#errors[layer_names[j+1]])
+
+			--for each weight w in neuron n
+			for w =1 , #errors[layer_names[j+1]] do
+				errors[layer_names[j]][n] = errors[layer_names[j]][n] -- + errors[layer_names[j+1]][w] * network[layer_names[j+1]][w]
+			end
+
+				errors[layer_names[j]][n] =  errors[layer_names[j]][n] * partial_derivative(network[layer_names[j]][n]['value']())
+		end
+	end
+	
+-- 	--list of errors
+-- 	local errors = {}
+-- 	local total_error = 0
+-- 	for i = 1, #network['output_layer'] do
+-- 		local ei = (expected_output[i] - network['output_layer'][i]['value']())
+-- 		errors[i] = (1/2 * ei * ei)
+-- 		total_error = total_error + errors[i]
+-- 	end
+
+-- 	--delta rule 
+-- 	-- deltaTotalError / deltaWeight_j = -(expected_i - out_i) * out_i * (1 - out_i) * input_neuron_j_activation
+-- 	-- can be written differently
+
+-- 	console.log("total error: " .. tostring(total_error))
+
+-- 	--nabla_w
+-- 	local delta_weights_by_layer = {}
+
+-- 	local deltas = {}
+-- 	delta_weights_by_layer['output_layer'] = {}
 
 		
-	--computes cost
-	for j=1, #network['output_layer'] do
-		-- delta of error in respect to weight_j.
-		-- follows the above formula
-		delta_weights_by_layer['output_layer'][j] = {}
-		deltas[j] = aprox_cost_derivative(network['output_layer'][j]['value'](), expected_output[j])--weight_error_delta(expected_output[i], )
-		deltas[j] = deltas[j] * partial_derivative(network['output_layer'][j]['value']())
-	end
-
-	--computes cost partia derivative in respect to input
-	--computes cost
-	for i=1, #network['output_layer'] do
-		for j=1, #network['output_layer'][i]['inputs'] do
-			delta_weights_by_layer['output_layer'][i][j] =  deltas[i] * network['output_layer'][i]['inputs'][j]
-		end
-	end
-	--passes the calculated deltas backwards through each layer
-	for i = 1, #layer_names -1 do
-		local j = #layer_names - i
-		
-		delta_weights_by_layer[layer_names[j]] = {}
-		local delta_sum = 0.0
-
-		--calculates all the weights . delta, dot product
---		for m=1, #deltas do
-		for n=1, #network[layer_names[j+1]] do
-			for w=1, #network[layer_names[j+1]][n] do
-				delta_sum = delta_sum + deltas[n*#network[layer_names[j+1]] + w] * network[layer_names[j+1]][n][w]
-			end
-		end
---		end
-
-		for n=1, #network[layer_names[j]] do
-			deltas[n] = delta_sum *  partial_derivative(network[layer_names[j]][n]['value']())
-		end
-
-		for x = 1, #deltas do
-			console.log(#deltas)
-			for n=1, #network[layer_names[j]] do
-				console.log(#network[layer_names[j]][n])
-				console.log(#network[layer_names[j]][n]['inputs'])
-				console.log(x)
-				console.log(n)
-				console.log(j)
-				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x] * network[layer_names[j-1]][x]['inputs'][x]
-			end
-		end
-
-	end
+-- 	--computes cost
+-- 	for j=1, #network['output_layer'] do
+-- 		-- delta of error in respect to weight_j.
+-- 		-- follows the above formula
+-- 		delta_weights_by_layer['output_layer'][j] = {}
+-- 		deltas[j] = aprox_cost_derivative(network['output_layer'][j]['value'](), expected_output[j])--weight_error_delta(expected_output[i], )
+-- 		deltas[j] = deltas[j] * partial_derivative(network['output_layer'][j]['value']())
+-- 	end
+-- 	console.log("output delta size: " .. tostring(#deltas))
+-- 	console.log("output input: " .. tostring(#network['output_layer'][1]['inputs']))
+	
+-- 	--computes cost partia derivative in respect to input
+-- 	--computes cost
+-- --	for i=1, #network['output_layer'] do
 
 
-	-- local delta_sum = 0
+-- 	for j=1, #network['output_layer'] do
+-- 		delta_weights_by_layer['output_layer'][j] = 0.0
 
-	-- -- calculates all the weights and deltas
-	-- for m=1, #deltas do
-	-- 	for n=1, #network[layer_names[j]][1]['inputs'] do
-	-- 		delta_sum = delta_sum + deltas[m] * network[layer_names[j]][1]['inputs'][n]
-	-- 	end
-	-- end
+-- 		for k = 1, #network['output_layer'] do
+-- 			--console.log("output size j: " .. tostring(#network['output_layer'][j]))
+-- 			delta_weights_by_layer['output_layer'][j] = delta_weights_by_layer['output_layer'][j] + deltas[k] * network['output_layer'][j]['sum_value']()
+-- 		end
 
-	-- console.log("delta_sum: " .. tostring(delta_sum))
+-- 	end
+-- --	end
+	
+-- 	--passes the calculated deltas backwards through each layer
+-- 	for i = 1, (#layer_names) -1 do
 
-	-- for n=1, #network[layer_names[j]] do
-	-- 	--deltas[n] = delta_sum * partial_derivative(network[layer_names[j]][n]['value']())
+-- 		local j = (#layer_names) - i
+-- 		console.log("Layer: " .. tostring(j))
+	
+-- 		delta_weights_by_layer[layer_names[j]] = {}
+-- 		local delta_sum = 0.0
 
-	-- 	delta_weights_by_layer[layer_names[j]][n] = {}
+-- 		--calculates all the weights . delta, dot product
+-- --		for m=1, #deltas do
 
-	-- 	for x = 1, #deltas do
-	-- 		delta_weights_by_layer[layer_names[j]][n][x] = deltas[x]
-	-- 	end
-	-- end
+-- 		console.log("output delta size: " .. tostring(#deltas))
+-- 		for n=1, #network[layer_names[j+1]] do
+-- 			for w=1, #network[layer_names[j+1]][n] do
+-- 				delta_sum = delta_sum + deltas[n*#network[layer_names[j+1]] + w] * network[layer_names[j+1]][n][w]
+-- 			end
+-- 		end
+-- --		end
 
-	--end
+-- 		for n=1, #network[layer_names[j]] do
+-- 			deltas[n] = delta_sum *  partial_derivative(network[layer_names[j]][n]['value']())
+-- 		end
+
+-- 		for x = 1, #deltas do
+-- 			console.log(#deltas)
+-- 			for n=1, #network[layer_names[j]] do
+-- 				console.log(#network[layer_names[j]][n])
+-- 				console.log(#network[layer_names[j]][n]['inputs'])
+-- 				console.log(x)
+-- 				console.log(n)
+-- 				console.log(j)
+-- 				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x] * network[layer_names[j-1]][x]['inputs'][x]
+-- 			end
+-- 		end
+
+-- 	end
+
+
+-- 	-- local delta_sum = 0
+
+-- 	-- -- calculates all the weights and deltas
+-- 	-- for m=1, #deltas do
+-- 	-- 	for n=1, #network[layer_names[j]][1]['inputs'] do
+-- 	-- 		delta_sum = delta_sum + deltas[m] * network[layer_names[j]][1]['inputs'][n]
+-- 	-- 	end
+-- 	-- end
+
+-- 	-- console.log("delta_sum: " .. tostring(delta_sum))
+
+-- 	-- for n=1, #network[layer_names[j]] do
+-- 	-- 	--deltas[n] = delta_sum * partial_derivative(network[layer_names[j]][n]['value']())
+
+-- 	-- 	delta_weights_by_layer[layer_names[j]][n] = {}
+
+-- 	-- 	for x = 1, #deltas do
+-- 	-- 		delta_weights_by_layer[layer_names[j]][n][x] = deltas[x]
+-- 	-- 	end
+-- 	-- end
+
+-- 	--end
 
 	--updoot weights
 	for i = 1, #layer_names do
@@ -695,9 +746,9 @@ local function activate_and_backward_propagate(network, expected_output)
 
 			for w=1, #network[layer_names[i]][n] do
 				
-				console.log(delta_weights_by_layer[layer_names[i]][n][w])
+				--console.log(errors[layer_names[i]][n][w])
 
-				network[layer_names[i]][n][w] = network[layer_names[i]][n][w] - (learning_rate * delta_weights_by_layer[layer_names[i]][n][w])
+				network[layer_names[i]][n][w] = network[layer_names[i]][n][w] - (learning_rate * errors[layer_names[i]][n][w])
 
 			end
 		end	
