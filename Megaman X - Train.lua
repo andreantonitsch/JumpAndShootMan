@@ -508,7 +508,7 @@ local function activate_neuron(layer, neuron)
 	local sum = 0.0
 	for i=1, #layer do
 		sum = sum + neuron[i] * layer[i]['value']()
-		neuron['inputs'] = layer[i]['value']()
+		neuron['inputs'][i] = 1.0 * layer[i]['value']()
 	end
 
 	neuron['value'] = (function() return sigmoid(sum) end)
@@ -605,6 +605,8 @@ local function activate_and_backward_propagate(network, expected_output)
 	-- deltaTotalError / deltaWeight_j = -(expected_i - out_i) * out_i * (1 - out_i) * input_neuron_j_activation
 	-- can be written differently
 
+	console.log("total error: " .. tostring(total_error))
+
 	--nabla_w
 	local delta_weights_by_layer = {}
 
@@ -613,7 +615,7 @@ local function activate_and_backward_propagate(network, expected_output)
 
 		
 	--computes cost
-	for j=1, #network['output_layer'][1] do
+	for j=1, #network['output_layer'] do
 		-- delta of error in respect to weight_j.
 		-- follows the above formula
 		delta_weights_by_layer['output_layer'][j] = {}
@@ -623,10 +625,11 @@ local function activate_and_backward_propagate(network, expected_output)
 
 	--computes cost partia derivative in respect to input
 	--computes cost
-	for j=1, #network['output_layer'][i] do
-		delta_weights_by_layer['output_layer'][i][j] =  deltas[j] *  #network['output_layer'][i]['input'][j]
+	for i=1, #network['output_layer'] do
+		for j=1, #network['output_layer'][i]['inputs'] do
+			delta_weights_by_layer['output_layer'][i][j] =  deltas[j] *  network['output_layer'][i]['inputs'][j]
+		end
 	end
-	
 	--passes the calculated deltas backwards through each layer
 	for i = 1, #layer_names -1 do
 		local j = #layer_names - i
