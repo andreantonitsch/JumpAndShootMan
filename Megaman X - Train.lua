@@ -641,7 +641,7 @@ local function activate_and_backward_propagate(network, expected_output)
 --		for m=1, #deltas do
 		for n=1, #network[layer_names[j+1]] do
 			for w=1, #network[layer_names[j+1]][n] do
-				delta_sum = delta_sum + deltas[n+w] * network[layer_names[j+1]][n][w]
+				delta_sum = delta_sum + deltas[n*#network[layer_names[j+1]] + w] * network[layer_names[j+1]][n][w]
 			end
 		end
 --		end
