@@ -212,7 +212,7 @@ local boss_map_weight = 100.0
 local bullets_map_weight = 50.0
 
 -- Number of iterations to record
-local iterations = 1
+local iterations = 20
 
 local dataset_file = "Dataset.txt"
 

@@ -157,14 +157,14 @@
 --------------
 --refreshes the seed
 math.randomseed(os.time())
-math.random(); math.random(); math.random()
-
+math.random(); math.random(); math.random(); math.random()
 
 memory.usememorydomain("CARTROM")
 
 local State_filename = "T4_Bordini.State"
 local Dataset_filename = "Dataset.txt"
-local Weights_filename = "Weights"
+local Weights_filename = "Weights1520"
+
 local input_size = 16 -- defines an 16x16 input matrix
 
 -- SNES resolution is 256 x 224
@@ -382,6 +382,15 @@ local function button_to_output(buttons, outputs)
 			outputs[i] = 1.0
 		else
 			outputs[i] = 0.0
+		end
+	end
+end
+
+local function map_layer_to_inputs(layer, inputs)
+	clear_inputs(inputs)
+	for i=1, #ButtonNames do
+		if layer[i]['value']() >= 0.5 then
+			inputs["P1 " .. ButtonNames[i]] = true
 		end
 	end
 end
@@ -627,117 +636,6 @@ local function activate_and_backward_propagate(network, expected_output)
 				errors[layer_names[j]][n] =  errors[layer_names[j]][n] * partial_derivative(network[layer_names[j]][n]['value']())
 		end
 	end
-	
--- 	--list of errors
--- 	local errors = {}
--- 	local total_error = 0
--- 	for i = 1, #network['output_layer'] do
--- 		local ei = (expected_output[i] - network['output_layer'][i]['value']())
--- 		errors[i] = (1/2 * ei * ei)
--- 		total_error = total_error + errors[i]
--- 	end
-
--- 	--delta rule 
--- 	-- deltaTotalError / deltaWeight_j = -(expected_i - out_i) * out_i * (1 - out_i) * input_neuron_j_activation
--- 	-- can be written differently
-
--- 	console.log("total error: " .. tostring(total_error))
-
--- 	--nabla_w
--- 	local delta_weights_by_layer = {}
-
--- 	local deltas = {}
--- 	delta_weights_by_layer['output_layer'] = {}
-
-		
--- 	--computes cost
--- 	for j=1, #network['output_layer'] do
--- 		-- delta of error in respect to weight_j.
--- 		-- follows the above formula
--- 		delta_weights_by_layer['output_layer'][j] = {}
--- 		deltas[j] = aprox_cost_derivative(network['output_layer'][j]['value'](), expected_output[j])--weight_error_delta(expected_output[i], )
--- 		deltas[j] = deltas[j] * partial_derivative(network['output_layer'][j]['value']())
--- 	end
--- 	console.log("output delta size: " .. tostring(#deltas))
--- 	console.log("output input: " .. tostring(#network['output_layer'][1]['inputs']))
-	
--- 	--computes cost partia derivative in respect to input
--- 	--computes cost
--- --	for i=1, #network['output_layer'] do
-
-
--- 	for j=1, #network['output_layer'] do
--- 		delta_weights_by_layer['output_layer'][j] = 0.0
-
--- 		for k = 1, #network['output_layer'] do
--- 			--console.log("output size j: " .. tostring(#network['output_layer'][j]))
--- 			delta_weights_by_layer['output_layer'][j] = delta_weights_by_layer['output_layer'][j] + deltas[k] * network['output_layer'][j]['sum_value']()
--- 		end
-
--- 	end
--- --	end
-	
--- 	--passes the calculated deltas backwards through each layer
--- 	for i = 1, (#layer_names) -1 do
-
--- 		local j = (#layer_names) - i
--- 		console.log("Layer: " .. tostring(j))
-	
--- 		delta_weights_by_layer[layer_names[j]] = {}
--- 		local delta_sum = 0.0
-
--- 		--calculates all the weights . delta, dot product
--- --		for m=1, #deltas do
-
--- 		console.log("output delta size: " .. tostring(#deltas))
--- 		for n=1, #network[layer_names[j+1]] do
--- 			for w=1, #network[layer_names[j+1]][n] do
--- 				delta_sum = delta_sum + deltas[n*#network[layer_names[j+1]] + w] * network[layer_names[j+1]][n][w]
--- 			end
--- 		end
--- --		end
-
--- 		for n=1, #network[layer_names[j]] do
--- 			deltas[n] = delta_sum *  partial_derivative(network[layer_names[j]][n]['value']())
--- 		end
-
--- 		for x = 1, #deltas do
--- 			console.log(#deltas)
--- 			for n=1, #network[layer_names[j]] do
--- 				console.log(#network[layer_names[j]][n])
--- 				console.log(#network[layer_names[j]][n]['inputs'])
--- 				console.log(x)
--- 				console.log(n)
--- 				console.log(j)
--- 				delta_weights_by_layer[layer_names[j]][n][x] = deltas[x] * network[layer_names[j-1]][x]['inputs'][x]
--- 			end
--- 		end
-
--- 	end
-
-
--- 	-- local delta_sum = 0
-
--- 	-- -- calculates all the weights and deltas
--- 	-- for m=1, #deltas do
--- 	-- 	for n=1, #network[layer_names[j]][1]['inputs'] do
--- 	-- 		delta_sum = delta_sum + deltas[m] * network[layer_names[j]][1]['inputs'][n]
--- 	-- 	end
--- 	-- end
-
--- 	-- console.log("delta_sum: " .. tostring(delta_sum))
-
--- 	-- for n=1, #network[layer_names[j]] do
--- 	-- 	--deltas[n] = delta_sum * partial_derivative(network[layer_names[j]][n]['value']())
-
--- 	-- 	delta_weights_by_layer[layer_names[j]][n] = {}
-
--- 	-- 	for x = 1, #deltas do
--- 	-- 		delta_weights_by_layer[layer_names[j]][n][x] = deltas[x]
--- 	-- 	end
--- 	-- end
-
--- 	--end
 
 	--updoot weights
 	for i = 1, #layer_names do
@@ -807,9 +705,9 @@ local input_table = create_input_table()
 local input_layer = input_to_layer(input_table)
 local network = create_network(input_layer)
 
-write_weights(network,Weights_filename)
+-- write_weights(network,Weights_filename)
 
--- load_weights(network, Weights_filename)
+load_weights(network, Weights_filename)
 
 
 
@@ -822,7 +720,9 @@ local outputs = {}
 	
 local frame = 1
 
-local mode = 'train'
+local mode = 'run'
+
+
 
 if mode == 'train' then
 	console.log('training')
@@ -842,7 +742,37 @@ if mode == 'train' then
 
 else 
 
+	--load_weights(network, Weights_filename)
 
+	while true do
+		
+		savestate.load(State_filename);
+
+		while mainmemory.readbyte( mega_health_addr ) > 0 and mainmemory.readbyte( boss_health_addr ) > 0 do
+				
+				map_input_table(input_table)
+
+				activate_network(network)
+
+				map_layer_to_inputs(network['output_layer'], inputs)
+				
+				draw_input_table(input_table)
+			
+				-- --mainmemory.readbyte( 0x0E8F  )
+
+
+				-- gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
+
+				joypad.set(inputs)
+
+				gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']) .. " " .. tostring(network['layer1'][1]['value']()) , color, 7)
+				gui.drawText(0, 24+110, "Buttons: " .. 'Y ' .. tostring( inputs['P1 Y']) .. " " .. tostring(network['layer1'][2]['value']()) , color, 7)
+				gui.drawText(0, 24+100, "Buttons: " .. 'R ' .. tostring( inputs['P1 Right']) .. " " .. tostring(network['layer1'][3]['value']()) , color, 7)
+				gui.drawText(0, 24+90, "Buttons: " .. 'L ' .. tostring( inputs['P1 Left']) .. " " .. tostring(network['layer1'][4]['value']()) , color, 7)
+
+				emu.frameadvance()
+		end
+	end 
 
 end 
 --while true do
