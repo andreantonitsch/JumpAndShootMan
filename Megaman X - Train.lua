@@ -264,7 +264,7 @@ local function map_X(table, camx, camy)
 	local cellx = math.floor(mm_x / x_cell_size)
 	local celly = math.floor(mm_y / y_cell_size)
 	--console.log("Mega Man at " .. cellx .. " " .. celly)
-	
+
 	if mm_facing > 0x45 then
 		table[cellx][celly] = megaman_map_weight + 10
 	else
@@ -284,6 +284,7 @@ local function map_objects(table, camx, camy, base_addr, weight)
 			local obj_y = mainmemory.read_u16_le(obj_addr + 0x8) +1 - camy
 			local cellx = math.floor(obj_x / x_cell_size)
 			local celly = math.floor(obj_y / y_cell_size)
+
 			if cellx < input_size and cellx >= 0  and celly < input_size and celly >=0  then
 				--console.log("obj x y: " .. math.floor(obj_x / x_cell_size).. " " .. math.floor(obj_y / y_cell_size))
 				table[ cellx ][celly ] = weight 
@@ -554,14 +555,17 @@ end
 
 local function input_to_layer(input_table)
 	local layer = {	}
+	layer['input_table'] = input_table
 	for i=0, (input_size * input_size )-1 do
 		layer[i+1] = {}
 		local cellx = math.floor(i / input_size)
 		local celly = (i)  % input_size
+
 		--console.log(cellx, celly)
-		layer[i+1]['value'] = function() return  input_table[cellx][celly] end
+		layer[i+1]['value'] = (function() return  layer['input_table'][cellx][celly] end)
+
 	end
-	layer['activate'] = function() return end
+	layer['activate'] = (function() return end)
 	return layer
 end	
 
@@ -762,9 +766,10 @@ else
 
 
 				-- gui.drawText(0, 24+150, "HP: " .. tostring(mainmemory.readbyte( mega_health_addr   )), color, 9)
-
+				gui.drawText(0, 24+150, "output: " .. tostring(input_layer[29]['value']()), color, 9)
+				
 				joypad.set(inputs)
-
+				gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']) .. " " .. tostring(network['layer1'][1]['value']()) , color, 7)
 				gui.drawText(0, 24+120, "Buttons: " .. 'B ' .. tostring( inputs['P1 B']) .. " " .. tostring(network['layer1'][1]['value']()) , color, 7)
 				gui.drawText(0, 24+110, "Buttons: " .. 'Y ' .. tostring( inputs['P1 Y']) .. " " .. tostring(network['layer1'][2]['value']()) , color, 7)
 				gui.drawText(0, 24+100, "Buttons: " .. 'R ' .. tostring( inputs['P1 Right']) .. " " .. tostring(network['layer1'][3]['value']()) , color, 7)
