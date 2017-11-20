@@ -748,7 +748,7 @@ local function activate_and_backward_propagate(network, expected_output)
 				
 				--console.log(errors[layer_names[i]][n][w])
 
-				network[layer_names[i]][n][w] = network[layer_names[i]][n][w] - (learning_rate * errors[layer_names[i]][n][w])
+				network[layer_names[i]][n][w] = network[layer_names[i]][n][w] - (learning_rate * errors[layer_names[i]][n] * network[layer_names[i]][n]['inputs'][w] )
 
 			end
 		end	
@@ -807,11 +807,11 @@ local input_table = create_input_table()
 local input_layer = input_to_layer(input_table)
 local network = create_network(input_layer)
 
--- write_weights(network,Weights_filename)
+write_weights(network,Weights_filename)
 
 -- load_weights(network, Weights_filename)
 
--- write_weights(network,Weights_filename .. "3")
+
 
 local inputs = {}
 clear_inputs(inputs)
@@ -835,12 +835,14 @@ if mode == 'train' then
 		activate_and_backward_propagate(network, dataset[i]['output'])
 
 		if i % 10 == 0 then
-			write_weights(network,Weights_filename)
+			write_weights(network,Weights_filename .. tostring(i))
 		end
 
 	end
 
 else 
+
+
 
 end 
 --while true do
